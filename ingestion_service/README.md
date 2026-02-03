@@ -11,21 +11,114 @@ A Python-based microservice for the **OriginChain** project that fetches, normal
 ✅ **Schema Validation**: Strict adherence to `articles.json` contract using Pydantic  
 ✅ **Retry Logic**: Robust error handling with automatic retries  
 
-## Installation
+```
 
-### Prerequisites
+## Quick Start & Testing
 
-- Python 3.8+
-- pip
-
-### Install Dependencies
+### Step 1: Navigate to Project Directory
 
 ```bash
-cd ingestion_service
+cd c:\Users\LENOVO\shivansh\OriginChain\ingestion_service
+```
+
+### Step 2: Install Dependencies
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Quick Start
+### Step 3: Run Tests
+
+#### Test 1: Deduplication Logic
+```bash
+python example_usage.py --test-dedup
+```
+**Expected**: Should show deduplication working on test articles.
+
+#### Test 2: RSS Feed Integration
+```bash
+python example_usage.py --test-rss
+```
+**Expected**: Should fetch articles from BBC, Reuters, CNN, etc.
+
+#### Test 3: GDELT Integration
+```bash
+python example_usage.py --test-gdelt
+```
+**Expected**: Should fetch articles from GDELT API.
+
+### Step 4: Fetch Real Articles
+
+#### Simple Topic Query
+```bash
+python example_usage.py --topic "electric vehicles" --max-articles 15
+```
+
+#### Complex Multi-word Query
+```bash
+python example_usage.py --topic "India union budget 2026" --max-articles 20
+```
+
+#### Other Example Topics
+```bash
+# Technology
+python example_usage.py --topic "artificial intelligence" --max-articles 20
+
+# Science
+python example_usage.py --topic "space exploration" --max-articles 15
+
+# Current Events
+python example_usage.py --topic "climate summit 2026" --max-articles 20
+
+# Business
+python example_usage.py --topic "cryptocurrency market trends" --max-articles 15
+```
+
+### Step 5: Check Output
+
+All results are saved to the `output/` folder:
+```bash
+# View generated files
+dir output\
+
+# Or on Mac/Linux
+ls output/
+```
+
+**Output files will be named**: `output/<topic_name>.json`
+
+### What to Expect
+
+✅ **Console Output:**
+- Real-time progress logs
+- Article fetching from GDELT + RSS
+- Processing and deduplication statistics
+- Final count of unique articles
+
+✅ **JSON Output:**
+- Strict schema compliance
+- Multi-language support (English, Korean, Turkish, etc.)
+- Rich metadata (title, author, date, source)
+- Clean text extraction from HTML
+
+### Quick Verification
+
+View a sample output:
+```bash
+# Open in browser or text editor
+start output\electric_vehicles.json
+```
+
+The JSON will contain:
+- `case_id`: Unique identifier
+- `query`: Your search query
+- `generated_at`: ISO timestamp
+- `articles[]`: Array of fetched articles with full metadata
+
+---
+
+## Usage Examples
+
 
 ### Basic Usage
 
