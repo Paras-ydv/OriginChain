@@ -263,6 +263,9 @@ if __name__ == "__main__":
     parser.add_argument("--test-dedup", action="store_true", help="Test deduplication")
     parser.add_argument("--topic", type=str, help="Run with specific topic")
     parser.add_argument("--max-articles", type=int, default=20, help="Max articles to fetch")
+    parser.add_argument("--start-date", type=str, help="Start date (YYYY-MM-DD format)")
+    parser.add_argument("--end-date", type=str, help="End date (YYYY-MM-DD format)")
+    parser.add_argument("--use-mock", action="store_true", help="Use mock data instead of real APIs (for testing)")
     
     args = parser.parse_args()
     
@@ -278,7 +281,18 @@ if __name__ == "__main__":
     elif args.topic:
         # Run with custom topic
         print(f"\nFetching articles for: {args.topic}")
-        result = ingest_news(args.topic, args.max_articles, output_path=f"output/{args.topic.replace(' ', '_')}.json")
+        if args.use_mock:
+            print("  [Using MOCK data for testing]")
+        if args.start_date or args.end_date:
+            print(f"Date range: {args.start_date or 'any'} to {args.end_date or 'any'}")
+        result = ingest_news(
+            args.topic, 
+            args.max_articles, 
+            start_date=args.start_date,
+            end_date=args.end_date,
+            output_path=f"output/{args.topic.replace(' ', '_')}.json",
+            use_mock=args.use_mock
+        )
         print(f"Fetched {len(result.articles)} articles")
     else:
         # Run all examples

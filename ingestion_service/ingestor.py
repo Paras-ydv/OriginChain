@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from .schema import Article, ArticlesOutput
 from .sources import GDELTClient, RSSFeedClient
 from .deduplicator import DuplicateResolver
+from .mock_source import MockNewsSource
 from .utils import (
     clean_html, normalize_url, parse_date, get_current_iso_time,
     generate_article_id, generate_case_id, is_valid_article_text
@@ -25,9 +26,11 @@ logger = logging.getLogger(__name__)
 class NewsIngestor:
     """Main news ingestion class."""
     
-    def __init__(self):
+    def __init__(self, use_mock=False):
+        self.use_mock = use_mock
         self.gdelt_client = GDELTClient()
         self.rss_client = RSSFeedClient()
+        self.mock_client = MockNewsSource()
         self.deduplicator = DuplicateResolver()
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': USER_AGENT})
@@ -57,6 +60,11 @@ class NewsIngestor:
         """
         all_articles = []
         
+        # Use mock data if enabled
+        if self.use_mock:
+            logger.info(f"Using MOCK data source for query='{topic_query}'")
+            return self.mock_client.search(topic_query, max_articles, start_date, end_date)
+        
         # Calculate how many to fetch from each source
         per_source = max_articles // (int(use_gdelt) + int(use_rss))
         
@@ -81,6 +89,11 @@ class NewsIngestor:
                 all_articles.extend(rss_articles)
             except Exception as e:
                 logger.error(f"RSS fetch failed: {str(e)}")
+        
+        # Fallback to mock data if no articles fetched
+        if len(all_articles) == 0:
+            logger.warning("No articles fetched from external sources, falling back to mock data")
+            all_articles = self.mock_client.search(topic_query, max_articles, start_date, end_date)
         
         logger.info(f"Total articles fetched: {len(all_articles)}")
         return all_articles
@@ -346,7 +359,8 @@ def ingest_news(
     max_articles: int = DEFAULT_MAX_ARTICLES,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    output_path: str = "articles.json"
+    output_path: str = "articles.json",
+    use_mock: bool = False
 ) -> ArticlesOutput:
     """
     Convenience function to run news ingestion.
@@ -357,6 +371,7 @@ def ingest_news(
         start_date: Start date in YYYY-MM-DD format (optional)
         end_date: End date in YYYY-MM-DD format (optional)
         output_path: Path to save output JSON
+        use_mock: Use mock data source instead of real APIs (for testing)
         
     Returns:
         ArticlesOutput object with fetched articles
@@ -365,5 +380,5 @@ def ingest_news(
         >>> result = ingest_news("climate change", max_articles=50)
         >>> print(f"Fetched {len(result.articles)} articles")
     """
-    ingestor = NewsIngestor()
+    ingestor = NewsIngestor(use_mock=use_mock)
     return ingestor.ingest(topic_query, max_articles, start_date, end_date, output_path)
