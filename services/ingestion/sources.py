@@ -54,8 +54,10 @@ class GDELTClient:
         
         try:
             # Build query parameters
+            # Wrap query in quotes for exact phrase search
+            exact_query = f'"{query}"' if ' ' in query else query
             params = {
-                'query': query,
+                'query': exact_query,
                 'mode': GDELT_MODE,
                 'format': GDELT_FORMAT,
                 'maxrecords': min(max_records, GDELT_MAX_RECORDS)
@@ -161,22 +163,21 @@ class RSSFeedClient:
             List of article dictionaries
         """
         articles = []
-        query_keywords = query.lower().split()
+        query_lower = query.lower()
         
         # Parse date range
         start_dt = datetime.strptime(start_date, '%Y-%m-%d') if start_date else None
         end_dt = datetime.strptime(end_date, '%Y-%m-%d') if end_date else None
         
-        # Fetch from all feeds
+        # First pass: Try exact phrase matching
         for source_name, feed_urls in self.feeds.items():
             for feed_url in feed_urls:
                 try:
                     feed_articles = self._fetch_feed(
-                        feed_url, source_name, query_keywords, start_dt, end_dt
+                        feed_url, source_name, query_lower, start_dt, end_dt, exact_match=True
                     )
                     articles.extend(feed_articles)
                     
-                    # Stop if we have enough
                     if len(articles) >= max_records:
                         break
                 except Exception as e:
@@ -186,6 +187,28 @@ class RSSFeedClient:
             if len(articles) >= max_records:
                 break
         
+        # Second pass: If no exact matches, use key terms (words > 3 chars)
+        if len(articles) == 0:
+            logger.info(f"No exact matches found, trying key terms search")
+            key_terms = [word for word in query_lower.split() if len(word) > 3]
+            
+            for source_name, feed_urls in self.feeds.items():
+                for feed_url in feed_urls:
+                    try:
+                        feed_articles = self._fetch_feed(
+                            feed_url, source_name, key_terms, start_dt, end_dt, exact_match=False
+                        )
+                        articles.extend(feed_articles)
+                        
+                        if len(articles) >= max_records:
+                            break
+                    except Exception as e:
+                        logger.warning(f"Failed to fetch RSS feed {feed_url}: {str(e)}")
+                        continue
+                
+                if len(articles) >= max_records:
+                    break
+        
         logger.info(f"RSS: Fetched {len(articles)} articles for query '{query}'")
         return articles[:max_records]
     
@@ -193,9 +216,10 @@ class RSSFeedClient:
         self,
         feed_url: str,
         source_name: str,
-        query_keywords: List[str],
+        query,  # Can be string (exact) or list (key terms)
         start_date: Optional[datetime],
-        end_date: Optional[datetime]
+        end_date: Optional[datetime],
+        exact_match: bool = True
     ) -> List[Dict[str, Any]]:
         """Fetch and parse single RSS feed."""
         articles = []
@@ -205,14 +229,23 @@ class RSSFeedClient:
             feed = feedparser.parse(feed_url)
             
             for entry in feed.entries:
-                # Check if matches any keyword
+                # Get content to search
                 title = entry.get('title', '').lower()
                 summary = entry.get('summary', '').lower()
                 content = title + ' ' + summary
                 
-                # Match if any keyword is found
-                if not any(keyword in content for keyword in query_keywords):
-                    continue
+                # Check match based on mode
+                if exact_match:
+                    # Exact phrase matching
+                    if isinstance(query, str) and query not in content:
+                        continue
+                else:
+                    # Key terms matching - at least 50% of key terms must be present
+                    if isinstance(query, list):
+                        matches = sum(1 for term in query if term in content)
+                        required_matches = max(1, len(query) // 2)  # At least 50%
+                        if matches < required_matches:
+                            continue
                 
                 # Parse date
                 published_at = None
@@ -262,61 +295,224 @@ class WebSearchClient:
         query: str,
         max_results: int = WEB_SEARCH_MAX_RESULTS
     ) -> List[Dict[str, Any]]:
-        """Search web for articles matching query."""
+        """Search web for articles matching query from multiple sources."""
         articles = []
         
         try:
-            # Use NewsAPI-like approach with direct news site search
-            news_sites = [
-                'https://www.reuters.com/search/news?blob={query}',
-                'https://www.bbc.com/search?q={query}',
-                'https://edition.cnn.com/search?q={query}'
-            ]
+            # Source 1: Google News RSS (most reliable)
+            google_articles = self._fetch_google_news_rss(query, max_results // 2)
+            articles.extend(google_articles)
+            logger.info(f"Google News RSS: {len(google_articles)} articles")
             
-            for site_url in news_sites:
-                try:
-                    url = site_url.format(query=urllib.parse.quote(query))
-                    response = self.session.get(url, timeout=5)
-                    
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.text, 'html.parser')
-                        links = soup.find_all('a', href=True)
-                        
-                        for link in links[:5]:  # Max 5 per site
-                            href = link.get('href', '')
-                            title = link.get_text().strip()
-                            
-                            if len(title) > 10 and 'http' in href:
-                                articles.append({
-                                    'url': href,
-                                    'title': title,
-                                    'source_name': extract_domain(href),
-                                    'published_at': None,
-                                    'author': None,
-                                    'language': 'en',
-                                    'raw_text': None
-                                })
-                                
-                                if len(articles) >= max_results:
-                                    break
-                except:
-                    continue
-                    
-                if len(articles) >= max_results:
-                    break
+            # Source 2: Bing News Search
+            if len(articles) < max_results:
+                bing_articles = self._fetch_bing_news(query, max_results - len(articles))
+                articles.extend(bing_articles)
+                logger.info(f"Bing News: {len(bing_articles)} articles")
             
-            # Fallback: Create mock articles for demonstration
+            # Source 3: DuckDuckGo News Search
+            if len(articles) < max_results:
+                ddg_articles = self._fetch_duckduckgo_news(query, max_results - len(articles))
+                articles.extend(ddg_articles)
+                logger.info(f"DuckDuckGo News: {len(ddg_articles)} articles")
+
+            # Source 4: Direct news site scraping (Indian sources for better coverage)
+            if len(articles) < max_results:
+                direct_articles = self._fetch_direct_news_sites(query, max_results - len(articles))
+                articles.extend(direct_articles)
+                logger.info(f"Direct scraping: {len(direct_articles)} articles")
+            
+            # Fallback: Create mock articles ONLY if all sources failed
             if len(articles) == 0:
+                logger.warning("All web sources failed, using mock fallback")
                 mock_articles = self._create_mock_articles(query, min(5, max_results))
                 articles.extend(mock_articles)
             
-            logger.info(f"Web Search: Found {len(articles)} articles for query '{query}'")
+            logger.info(f"Web Search: Found {len(articles)} total articles for query '{query}'")
             
         except Exception as e:
             logger.error(f"Web search error: {str(e)}")
+            # Use mock as absolute fallback
+            articles = self._create_mock_articles(query, min(5, max_results))
         
         return articles[:max_results]
     
+    def _fetch_google_news_rss(self, query: str, max_results: int) -> List[Dict[str, Any]]:
+        """Fetch articles from Google News RSS feed."""
+        articles = []
+        try:
+            # Google News RSS URL
+            rss_url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=en-IN&gl=IN&ceid=IN:en"
+            
+            feed = feedparser.parse(rss_url)
+            
+            for entry in feed.entries[:max_results]:
+                # Extract article data
+                article = {
+                    'url': entry.get('link', ''),
+                    'title': entry.get('title', '').strip(),
+                    'source_name': entry.get('source', {}).get('title', 'Google News'),
+                    'published_at': None,
+                    'author': None,
+                    'language': 'en',
+                    'raw_text': entry.get('summary', None)
+                }
+                
+                # Parse date if available
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    pub_dt = datetime(*entry.published_parsed[:6])
+                    article['published_at'] = pub_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                
+                if article['url']:
+                    articles.append(article)
+            
+        except Exception as e:
+            logger.warning(f"Google News RSS failed: {str(e)}")
+        
+        return articles
+    
+    def _fetch_bing_news(self, query: str, max_results: int) -> List[Dict[str, Any]]:
+        """Fetch articles from Bing News search."""
+        articles = []
+        try:
+            # Bing News search URL
+            search_url = f"https://www.bing.com/news/search?q={urllib.parse.quote(query)}&format=rss"
+            
+            feed = feedparser.parse(search_url)
+            
+            for entry in feed.entries[:max_results]:
+                article = {
+                    'url': entry.get('link', ''),
+                    'title': entry.get('title', '').strip(),
+                    'source_name': extract_domain(entry.get('link', 'bing.com')),
+                    'published_at': None,
+                    'author': None,
+                    'language': 'en',
+                    'raw_text': entry.get('description', None)
+                }
+                
+                # Parse date
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    pub_dt = datetime(*entry.published_parsed[:6])
+                    article['published_at'] = pub_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+                
+                if article['url']:
+                    articles.append(article)
+            
+        except Exception as e:
+            logger.warning(f"Bing News failed: {str(e)}")
+        
+        return articles
+    
+    def _fetch_direct_news_sites(self, query: str, max_results: int) -> List[Dict[str, Any]]:
+        """Fetch articles by directly searching news websites."""
+        articles = []
+        
+        # Indian and international news sites with search endpoints
+        search_urls = [
+            f"https://economictimes.indiatimes.com/searchresult.cms?query={urllib.parse.quote(query)}",
+            f"https://www.livemint.com/Search/Link/Search/{urllib.parse.quote(query)}",
+            f"https://timesofindia.indiatimes.com/topic/{urllib.parse.quote(query)}",
+        ]
+        
+        for search_url in search_urls:
+            if len(articles) >= max_results:
+                break
+                
+            try:
+                response = self.session.get(search_url, timeout=5)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Find article links (common patterns)
+                    links = soup.find_all('a', href=True)
+                    
+                    for link in links[:3]:  # Max 3 per site
+                        href = link.get('href', '')
+                        title = link.get_text().strip()
+                        
+                        # Filter for valid article links
+                        if (len(title) > 20 and 
+                            ('http' in href or href.startswith('/')) and
+                            any(word in title.lower() for word in query.lower().split())):
+                            
+                            # Make URL absolute
+                            if href.startswith('/'):
+                                from urllib.parse import urlparse
+                                base_url = f"{urlparse(search_url).scheme}://{urlparse(search_url).netloc}"
+                                href = base_url + href
+                            
+                            articles.append({
+                                'url': href,
+                                'title': title,
+                                'source_name': extract_domain(search_url),
+                                'published_at': None,
+                                'author': None,
+                                'language': 'en',
+                                'raw_text': None
+                            })
+                            
+                            if len(articles) >= max_results:
+                                break
+            except Exception as e:
+                logger.warning(f"Direct fetch from {search_url} failed: {str(e)}")
+                continue
+        
+        return articles
+    
+    def _fetch_duckduckgo_news(self, query: str, max_results: int) -> List[Dict[str, Any]]:
+        """Fetch articles from DuckDuckGo HTML news search."""
+        articles = []
+        try:
+            # DuckDuckGo HTML news search
+            # iar=news filters for news results
+            url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}&iar=news&kl=in-en" # kl=in-en for India/English
+            
+            # DDG requires User-Agent
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = self.session.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # DDG HTML result structure
+                results = soup.find_all('div', class_='result')
+                
+                for result in results[:max_results]:
+                    link_tag = result.find('a', class_='result__a')
+                    snippet_tag = result.find('a', class_='result__snippet')
+                    
+                    if link_tag:
+                        href = link_tag.get('href', '')
+                        title = link_tag.get_text().strip()
+                        snippet = snippet_tag.get_text().strip() if snippet_tag else None
+                        
+                        if href and title:
+                            # Skip DDG ad/internal links if any
+                            if 'duckduckgo.com' in href:
+                                continue
+                                
+                            articles.append({
+                                'url': href,
+                                'title': title,
+                                'source_name': extract_domain(href),
+                                'published_at': None,
+                                'author': None,
+                                'language': 'en',
+                                'raw_text': snippet
+                            })
+                            
+                            if len(articles) >= max_results:
+                                break
+                                
+        except Exception as e:
+            logger.warning(f"DuckDuckGo search failed: {str(e)}")
+            
+        return articles
+
     def _create_mock_articles(self, query: str, count: int) -> List[Dict[str, Any]]:
         """Create relevant mock articles based on query."""
         articles = []

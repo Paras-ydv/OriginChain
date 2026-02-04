@@ -12,6 +12,7 @@ WEB_SEARCH_TIMEOUT = 10  # seconds
 
 # RSS Feed URLs for major publishers
 RSS_FEEDS = {
+    # International News
     "BBC": [
         "http://feeds.bbci.co.uk/news/rss.xml",
         "http://feeds.bbci.co.uk/news/world/rss.xml",
@@ -34,6 +35,21 @@ RSS_FEEDS = {
     "NPR": [
         "https://feeds.npr.org/1001/rss.xml",
         "https://feeds.npr.org/1004/rss.xml",
+    ],
+    # Indian News Sources
+    "Economic Times": [
+        "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
+        "https://economictimes.indiatimes.com/news/economy/policy/rssfeeds/1124.cms",
+    ],
+    "LiveMint": [
+        "https://www.livemint.com/rss/news",
+        "https://www.livemint.com/rss/politics",
+    ],
+    "Times of India": [
+        "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+    ],
+    "The Hindu": [
+        "https://www.thehindu.com/news/national/?service=rss",
     ],
 }
 

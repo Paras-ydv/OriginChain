@@ -6,10 +6,8 @@ import sys
 import logging
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from ingestion_service import ingest_news, NewsIngestor
+# Import from local module
+from ingestor import ingest_news, NewsIngestor
 
 # Configure logging
 logging.basicConfig(
@@ -202,9 +200,9 @@ def test_deduplication():
     print("TEST: Deduplication")
     print("="*60 + "\n")
     
-    from ingestion_service.deduplicator import DuplicateResolver
-    from ingestion_service.schema import Article
-    from ingestion_service.utils import get_current_iso_time
+    from deduplicator import DuplicateResolver
+    from schema import Article
+    from utils import get_current_iso_time
     
     # Create test articles with duplicates
     test_articles = [
