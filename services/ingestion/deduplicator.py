@@ -11,8 +11,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
 
-from .config import COSINE_SIMILARITY_THRESHOLD, FUZZY_MATCH_THRESHOLD
-from .utils import normalize_url
+from config import COSINE_SIMILARITY_THRESHOLD, FUZZY_MATCH_THRESHOLD
+from utils import normalize_url
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
