@@ -9,14 +9,14 @@ from typing import List, Dict, Optional, Any
 import requests
 from bs4 import BeautifulSoup
 
-from .schema import Article, ArticlesOutput
-from .sources import GDELTClient, RSSFeedClient
-from .deduplicator import DuplicateResolver
-from .utils import (
+from schema import Article, ArticlesOutput
+from sources import GDELTClient, RSSFeedClient, WebSearchClient
+from deduplicator import DuplicateResolver
+from utils import (
     clean_html, normalize_url, parse_date, get_current_iso_time,
     generate_article_id, generate_case_id, is_valid_article_text
 )
-from .config import REQUEST_TIMEOUT, USER_AGENT, DEFAULT_MAX_ARTICLES
+from config import REQUEST_TIMEOUT, USER_AGENT, DEFAULT_MAX_ARTICLES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,6 +28,7 @@ class NewsIngestor:
     def __init__(self):
         self.gdelt_client = GDELTClient()
         self.rss_client = RSSFeedClient()
+        self.web_search_client = WebSearchClient()
         self.deduplicator = DuplicateResolver()
         self.session = requests.Session()
         self.session.headers.update({'User-Agent': USER_AGENT})
@@ -39,7 +40,8 @@ class NewsIngestor:
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
         use_gdelt: bool = True,
-        use_rss: bool = True
+        use_rss: bool = True,
+        use_web_search: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Fetch articles from all sources.
@@ -51,6 +53,7 @@ class NewsIngestor:
             end_date: End date (YYYY-MM-DD format)
             use_gdelt: Whether to use GDELT API
             use_rss: Whether to use RSS feeds
+            use_web_search: Whether to use web search
             
         Returns:
             List of article dictionaries
@@ -58,7 +61,19 @@ class NewsIngestor:
         all_articles = []
         
         # Calculate how many to fetch from each source
-        per_source = max_articles // (int(use_gdelt) + int(use_rss))
+        active_sources = int(use_gdelt) + int(use_rss) + int(use_web_search)
+        per_source = max_articles // active_sources if active_sources > 0 else 0
+        
+        # Fetch from RSS first (most reliable)
+        if use_rss:
+            try:
+                logger.info(f"Fetching from RSS: query='{topic_query}'")
+                rss_articles = self.rss_client.search(
+                    topic_query, per_source, start_date, end_date
+                )
+                all_articles.extend(rss_articles)
+            except Exception as e:
+                logger.error(f"RSS fetch failed: {str(e)}")
         
         # Fetch from GDELT
         if use_gdelt:
@@ -71,16 +86,16 @@ class NewsIngestor:
             except Exception as e:
                 logger.error(f"GDELT fetch failed: {str(e)}")
         
-        # Fetch from RSS
-        if use_rss:
+        # Fetch from web search (top 20 relevant sites)
+        if use_web_search:
             try:
-                logger.info(f"Fetching from RSS: query='{topic_query}'")
-                rss_articles = self.rss_client.search(
-                    topic_query, per_source, start_date, end_date
+                logger.info(f"Fetching from web search: query='{topic_query}'")
+                web_articles = self.web_search_client.search(
+                    topic_query, 20  # Fixed at 20 as per requirement
                 )
-                all_articles.extend(rss_articles)
+                all_articles.extend(web_articles)
             except Exception as e:
-                logger.error(f"RSS fetch failed: {str(e)}")
+                logger.error(f"Web search failed: {str(e)}")
         
         logger.info(f"Total articles fetched: {len(all_articles)}")
         return all_articles

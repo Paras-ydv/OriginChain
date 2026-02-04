@@ -92,7 +92,8 @@ def example_advanced():
         topic_query="renewable energy",
         max_articles=25,
         use_gdelt=True,
-        use_rss=True
+        use_rss=True,
+        use_web_search=True
     )
     
     print(f"Fetched {len(raw_articles)} raw articles")
@@ -161,7 +162,8 @@ def test_gdelt():
         topic_query="technology",
         max_articles=10,
         use_gdelt=True,
-        use_rss=False
+        use_rss=False,
+        use_web_search=False
     )
     
     print(f"GDELT returned {len(articles)} articles")
@@ -182,7 +184,8 @@ def test_rss():
         topic_query="technology",
         max_articles=10,
         use_gdelt=False,
-        use_rss=True
+        use_rss=True,
+        use_web_search=False
     )
     
     print(f"RSS returned {len(articles)} articles")

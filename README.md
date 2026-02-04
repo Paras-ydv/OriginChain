@@ -115,3 +115,58 @@ The system is split into 4 independent microservices:
 
 ## 📁 Suggested Folder Structure
 
+```
+OriginChain/
+├── services/
+│   ├── ingestion/
+│   │   ├── __init__.py
+│   │   └── ingestor.py          # Sriyansh's module
+│   ├── timeline/
+│   │   ├── __init__.py
+│   │   └── timeline_builder.py  # Shivansh's module
+│   ├── impact/
+│   │   ├── __init__.py
+│   │   └── impact_engine.py     # Anurag's module
+│   └── ui/
+│       ├── __init__.py
+│       └── app.py               # Paras's Streamlit UI
+├── data/                        # Input data storage
+├── outputs/                     # Generated JSON/PDF reports
+├── config/                      # Configuration files
+├── main.py                      # Application entry point
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Environment variables template
+└── README.md
+```
+
+## 🚀 Quick Start
+
+1. **Clone and setup**:
+   ```bash
+   git clone <repo-url>
+   cd OriginChain
+   pip install -r requirements.txt
+   ```
+
+2. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys
+   ```
+
+3. **Run the application**:
+   ```bash
+   streamlit run services/ui/app.py
+   ```
+
+## 📋 Development Workflow
+
+Each team member works on their assigned service:
+- **Sriyansh**: Implement `services/ingestion/ingestor.py`
+- **Shivansh**: Implement `services/timeline/timeline_builder.py`
+- **Anurag**: Implement `services/impact/impact_engine.py`
+- **Paras**: Enhance `services/ui/app.py` and add export functionality
+
+---
+
+*Ready to trace the origin of any news story! 🔍*

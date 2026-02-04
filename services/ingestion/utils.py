@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 import html2text
 from dateutil import parser as date_parser
 
-from .config import ISO_DATE_FORMAT, MIN_ARTICLE_LENGTH, MAX_ARTICLE_LENGTH
+from config import ISO_DATE_FORMAT, MIN_ARTICLE_LENGTH, MAX_ARTICLE_LENGTH
 
 
 def clean_html(html_content: str) -> str:
