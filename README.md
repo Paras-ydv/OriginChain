@@ -46,10 +46,11 @@ For a chosen instance (e.g. Tesla, Bitcoin, India, IT sector), generates:
 - polarity (positive/negative/mixed)
 - uncertainty notes
 
-### ✅ 5. Case Management + UI
-- Runs as a local demo product
-- Save sessions (cases)
-- Export report (JSON/PDF)
+### ✅ 5. Interactive Visualizations
+- Timeline graph with event distribution
+- Network graph showing article relationships
+- Interactive hover details
+- Color-coded event types
 
 ---
 
@@ -113,26 +114,35 @@ The system is split into 4 independent microservices:
 
 ---
 
-## 📁 Suggested Folder Structure
+## 📁 Project Structure
 
 ```
 OriginChain/
 ├── services/
 │   ├── ingestion/
 │   │   ├── __init__.py
-│   │   └── ingestor.py          # Sriyansh's module
+│   │   ├── ingestor.py          # News ingestion service
+│   │   ├── sources.py           # RSS/GDELT/Web sources
+│   │   ├── deduplicator.py      # Duplicate detection
+│   │   └── utils.py             # Helper functions
 │   ├── timeline/
 │   │   ├── __init__.py
-│   │   └── timeline_builder.py  # Shivansh's module
+│   │   └── timeline_builder.py  # Timeline construction
 │   ├── impact/
 │   │   ├── __init__.py
-│   │   └── impact_engine.py     # Anurag's module
+│   │   └── impact_engine.py     # Impact analysis
 │   └── ui/
 │       ├── __init__.py
-│       └── app.py               # Paras's Streamlit UI
-├── data/                        # Input data storage
-├── outputs/                     # Generated JSON/PDF reports
-├── config/                      # Configuration files
+│       └── app.py               # Streamlit UI
+├── graphs/
+│   ├── __init__.py
+│   ├── plot_graph.py            # Timeline & network visualization
+│   ├── buildingrelations.py     # LLM-based relationship generation
+│   └── relationships.json       # Generated relationships
+├── outputs/                     # Generated JSON reports
+│   ├── articles.json
+│   ├── timeline.json
+│   └── impact.json
 ├── main.py                      # Application entry point
 ├── requirements.txt             # Python dependencies
 ├── .env.example                 # Environment variables template
@@ -151,13 +161,22 @@ OriginChain/
 2. **Configure environment**:
    ```bash
    cp .env.example .env
-   # Edit .env with your API keys
+   # Add your Gemini API key to .env
+   GEMINI_API_KEY=your_api_key_here
    ```
 
 3. **Run the application**:
    ```bash
    streamlit run services/ui/app.py
    ```
+
+4. **Using the app**:
+   - Enter a news query (e.g., "Tesla stock price", "Union Budget 2026")
+   - Specify target entity for impact analysis
+   - Set max articles to fetch
+   - Click "🚀 Run Analysis"
+   - View timeline visualization and network graph
+   - Review articles and impact analysis
 
 ## 📋 Development Workflow
 
@@ -166,6 +185,28 @@ Each team member works on their assigned service:
 - **Shivansh**: Implement `services/timeline/timeline_builder.py`
 - **Anurag**: Implement `services/impact/impact_engine.py`
 - **Paras**: Enhance `services/ui/app.py` and add export functionality
+
+---
+
+## 📊 Features Implemented
+
+- ✅ Multi-source news ingestion (RSS, GDELT, Web Search)
+- ✅ Duplicate article detection and deduplication
+- ✅ LLM-powered timeline reconstruction
+- ✅ Root origin detection with confidence scoring
+- ✅ Event classification (initial_claim, amplification, etc.)
+- ✅ Impact analysis on target entities
+- ✅ Interactive timeline visualization with Plotly
+- ✅ Network graph showing article relationships
+- ✅ Streamlit-based user interface
+
+## 🔧 Tech Stack
+
+- **Frontend**: Streamlit
+- **Visualization**: Plotly, NetworkX
+- **LLM**: Google Gemini 2.5 Flash
+- **Data Processing**: Pandas, BeautifulSoup, NLTK
+- **News Sources**: RSS feeds, GDELT, Web scraping
 
 ---
 

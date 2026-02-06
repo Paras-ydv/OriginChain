@@ -16,7 +16,21 @@ sys.path.insert(0, os.path.join(root_dir, 'services', 'ingestion'))
 # Import ingestion functions directly
 from ingestor import ingest_news
 
-# Import other services with absolute paths
+# Load graph visualization
+graph_spec = importlib.util.spec_from_file_location(
+    "plot_graph",
+    os.path.join(root_dir, 'graphs', 'plot_graph.py')
+)
+graph_module = importlib.util.module_from_spec(graph_spec)
+graph_spec.loader.exec_module(graph_module)
+
+# Load buildingrelations
+relations_spec = importlib.util.spec_from_file_location(
+    "buildingrelations",
+    os.path.join(root_dir, 'graphs', 'buildingrelations.py')
+)
+relations_module = importlib.util.module_from_spec(relations_spec)
+relations_spec.loader.exec_module(relations_module)
 
 # Load timeline builder
 timeline_spec = importlib.util.spec_from_file_location(
@@ -35,6 +49,17 @@ impact_spec = importlib.util.spec_from_file_location(
 impact_module = importlib.util.module_from_spec(impact_spec)
 impact_spec.loader.exec_module(impact_module)
 ImpactEngine = impact_module.ImpactEngine
+
+# Clear old output files on app start
+outputs_dir = os.path.join(root_dir, "outputs")
+for file in ['articles.json', 'timeline.json', 'impact.json']:
+    file_path = os.path.join(outputs_dir, file)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+relations_file = os.path.join(root_dir, 'graphs', 'relationships.json')
+if os.path.exists(relations_file):
+    os.remove(relations_file)
 
 st.title("🔗 OriginChain - NewsTrace AI")
 
@@ -56,16 +81,42 @@ if st.button("🚀 Run Analysis"):
         impact_engine = ImpactEngine()
         impact_path = impact_engine.analyze_impact(timeline_path, target_entity)
         
+        # Generate relationships and graphs
+        st.info("Generating relationship graph...")
+        with open(timeline_path, 'r', encoding='utf-8') as f:
+            timeline_data_for_relations = json.load(f)
+        relationships = relations_module.generate_relationships(timeline_data_for_relations)
+        relations_module.save_relationships(relationships)
+        
         st.success("Analysis complete!")
+        
+        # Display timeline graphs
+        st.subheader("📈 Timeline Visualization")
+        
+        timeline_data = graph_module.load_timeline(timeline_path)
+        
+        # Main timeline graph
+        timeline_fig = graph_module.create_timeline_graph(timeline_data)
+        st.plotly_chart(timeline_fig, use_container_width=True)
+        
+        # Network graph
+        st.subheader("🕸️ Article Relationship Network")
+        network_fig = graph_module.create_neo4j_graph(timeline_data)
+        if network_fig:
+            st.plotly_chart(network_fig, use_container_width=True)
+        else:
+            st.info("No relationships found to display network graph.")
         
         # Display results
         col1, col2 = st.columns(2)
         
         with col1:
             st.subheader("📰 Articles")
-            for article in result.articles[:5]:
-                st.write(f"**{article.title}**")
-                st.write(f"Source: {article.source_name}")
+            with open(os.path.join(root_dir, "outputs", "articles.json"), 'r', encoding='utf-8') as f:
+                articles_data = json.load(f)
+            for article in articles_data.get('articles', [])[:5]:
+                st.write(f"**{article['title']}**")
+                st.write(f"Source: {article['source_name']}")
                 st.write("---")
         
         with col2:
@@ -83,7 +134,3 @@ if st.button("🚀 Run Analysis"):
                     st.write("**Second-order Effects:**")
                     for effect in impact_data['second_order_effects']:
                         st.write(f"• {effect}")
-            else:
-                st.write(f"Target: {target_entity}")
-                st.write("Impact: Analysis pending")
-                st.write("Confidence: N/A")
