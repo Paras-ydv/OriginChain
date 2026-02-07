@@ -1,0 +1,136 @@
+{
+  "relationships": [
+    {
+      "source_article_id": "art_0001",
+      "target_article_id": "art_0004",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0004 amplifies negative sentiment for Tesla stock by calling it a 'bubble', following earlier 'bad news' for investors in article 0001."
+    },
+    {
+      "source_article_id": "art_0007",
+      "target_article_id": "art_0005",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0005's report of a 'profit outlook tanks' amplifies the negative sentiment from the Q4 2025 earnings preview in article 0007."
+    },
+    {
+      "source_article_id": "art_0007",
+      "target_article_id": "art_0008",
+      "relationship_type": "CONSEQUENCE_OF",
+      "justification": "Article 0008 provides a recap of Tesla's earnings and Musk's announcements, which were previewed in article 0007."
+    },
+    {
+      "source_article_id": "art_0008",
+      "target_article_id": "art_0010",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0010 amplifies the importance of the Optimus robot (mentioned by Musk in article 0008) as a potential stock driver."
+    },
+    {
+      "source_article_id": "art_0008",
+      "target_article_id": "art_0013",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0013, reporting Tesla's ownership in SpaceX, amplifies the theme of Musk's ecosystem integration suggested by his announcements in article 0008."
+    },
+    {
+      "source_article_id": "art_0010",
+      "target_article_id": "art_0014",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0014 further amplifies the bullish sentiment around Optimus robot production, following article 0010's prediction of stock doubling due to Optimus."
+    },
+    {
+      "source_article_id": "root_origin",
+      "target_article_id": "art_0016",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0016, published later, reiterates and provides details of the UK sales plunge and stock drop initially indicated by root_origin."
+    },
+    {
+      "source_article_id": "art_0015",
+      "target_article_id": "art_0016",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0016 reports a more significant stock drop and provides the specific reason (UK sales plunge) for the general plunge reported earlier in article 0015."
+    },
+    {
+      "source_article_id": "art_0016",
+      "target_article_id": "art_0018",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0018 connects the falling stock (as detailed in 0016) to the urgent need for Optimus, amplifying the negative pressure on current stock performance."
+    },
+    {
+      "source_article_id": "art_0016",
+      "target_article_id": "art_0022",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0022 amplifies the negative sales narrative (initially UK in 0016) by reporting Volkswagen topping broader Europe EV sales, contributing to stock slides."
+    },
+    {
+      "source_article_id": "art_0015",
+      "target_article_id": "art_0020",
+      "relationship_type": "COUNTERS",
+      "justification": "Article 0020 reports Cathie Wood buying Tesla stock during a price tumble, directly countering the negative sentiment of the plunging stock reported in article 0015."
+    },
+    {
+      "source_article_id": "art_0015",
+      "target_article_id": "art_0021",
+      "relationship_type": "COUNTERS",
+      "justification": "Article 0021 counters the negative trend of falling stock prices (e.g., in 0015) by highlighting a 'strategic buying opportunity'."
+    },
+    {
+      "source_article_id": "art_0022",
+      "target_article_id": "art_0026",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0026 amplifies the 'Europe sales warnings' first highlighted in article 0022 as a factor for Tesla's stock slide."
+    },
+    {
+      "source_article_id": "art_0026",
+      "target_article_id": "art_0028",
+      "relationship_type": "COUNTERS",
+      "justification": "Article 0028 reports Tesla stock jumping later the same day, countering the early day slide and negative impact of the 'China AI training report' mentioned in article 0026."
+    },
+    {
+      "source_article_id": "art_0027",
+      "target_article_id": "art_0028",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0028 amplifies the positive end-of-week stock performance reported in article 0027, adding more detail and context."
+    },
+    {
+      "source_article_id": "art_0028",
+      "target_article_id": "art_0031",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0031 amplifies the positive stock trend reported in article 0028 and reinforces the 'China AI plan' as a driving factor."
+    },
+    {
+      "source_article_id": "art_0013",
+      "target_article_id": "art_0029",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0029 amplifies the bullish implications of 'Musk Ecosystem Integration', a theme established by the SpaceX link-up in article 0013."
+    },
+    {
+      "source_article_id": "art_0013",
+      "target_article_id": "art_0032",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0032 amplifies the importance of SpaceX for Elon Musk's long-term financial ambitions, building on the news of Tesla owning a piece of SpaceX in article 0013."
+    },
+    {
+      "source_article_id": "art_0002",
+      "target_article_id": "art_0006",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0006 provides another forecast for Tesla's share price for 2026, amplifying the discussion on future outlook initiated by article 0002."
+    },
+    {
+      "source_article_id": "art_0006",
+      "target_article_id": "art_0009",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0009 offers another stock price prediction for 2026-2030, further amplifying the forecasts discussed in article 0006."
+    },
+    {
+      "source_article_id": "art_0009",
+      "target_article_id": "art_0011",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0011 amplifies the theme of future predictions from article 0009 by presenting specific, albeit conflicting, analyst price targets."
+    },
+    {
+      "source_article_id": "art_0011",
+      "target_article_id": "art_0017",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0017 amplifies the ongoing discussion about Tesla's future valuation and Wall Street's expectations, building on the analyst predictions in article 0011."
+    }
+  ]
+}

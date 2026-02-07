@@ -94,12 +94,12 @@ class NewsIngestor:
             except Exception as e:
                 logger.error(f"GDELT fetch failed: {str(e)}")
         
-        # Fetch from web search (top 20 relevant sites)
+        # Fetch from web search
         if use_web_search:
             try:
                 logger.info(f"Fetching from web search: query='{topic_query}'")
                 web_articles = self.web_search_client.search(
-                    topic_query, 20  # Fixed at 20 as per requirement
+                    topic_query, per_source  # Use per_source instead of hardcoded 20
                 )
                 all_articles.extend(web_articles)
             except Exception as e:

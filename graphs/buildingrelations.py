@@ -3,7 +3,7 @@ import os
 import google.generativeai as genai
 
 # Read API key from .env.example
-with open(".env.example", "r") as f:
+with open(".env", "r") as f:
     for line in f:
         if line.startswith("GEMINI_API_KEY="):
             api_key = line.strip().split("=", 1)[1]
