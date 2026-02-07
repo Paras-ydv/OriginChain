@@ -1,16 +1,19 @@
 import json
 import os
-import google.generativeai as genai
 
-# Read API key from .env.example
-with open(".env", "r") as f:
-    for line in f:
-        if line.startswith("GEMINI_API_KEY="):
-            api_key = line.strip().split("=", 1)[1]
-            break
-
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-2.5-flash')
+try:
+    from google import genai
+    # Read API key from .env
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+    with open(env_path, "r") as f:
+        for line in f:
+            if line.startswith("GEMINI_API_KEY="):
+                api_key = line.strip().split("=", 1)[1]
+                break
+    client = genai.Client(api_key=api_key)
+    USE_LLM = True
+except:
+    USE_LLM = False
 
 def load_timeline():
     with open("outputs/timeline.json", "r", encoding="utf-8") as f:
@@ -40,45 +43,50 @@ def generate_relationships(timeline_data):
             'event_type': 'root'
         })
     
-    prompt = f"""Analyze these news articles and generate relationships between them.
-
-Articles:
-{json.dumps(articles, indent=2)}
-
-Generate relationships showing how articles are connected:
-- AMPLIFIES: Later article reinforces/expands earlier claim
-- CORRECTS: Later article corrects earlier misinformation
-- COUNTERS: Later article contradicts earlier claim
-- OFFICIAL_RESPONSE: Official statement responding to earlier report
-- CONSEQUENCE_OF: Later article reports consequences of earlier event
-
-Return JSON format:
-{{
-  "relationships": [
-    {{
-      "source_article_id": "art_0001",
-      "target_article_id": "art_0002", 
-      "relationship_type": "AMPLIFIES",
-      "justification": "Brief explanation"
-    }}
-  ]
-}}
-
-Focus on meaningful connections. Return only valid JSON."""
+    # Generate basic relationships based on timeline order
+    relationships = []
     
-    try:
-        response = model.generate_content(prompt)
-        content = response.text.strip()
-        
-        if content.startswith('```json'):
-            content = content.split('\n', 1)[1].rsplit('\n```', 1)[0]
-        elif content.startswith('```'):
-            content = content.split('\n', 1)[1].rsplit('\n```', 1)[0]
-        
-        return json.loads(content)
-    except Exception as e:
-        print(f"Error generating relationships: {e}")
-        return {"relationships": []}
+    # Connect root to first few events
+    if root and len(events) > 0:
+        for i in range(min(3, len(events))):
+            relationships.append({
+                'source_article_id': 'root_origin',
+                'target_article_id': f'art_{i:04d}',
+                'relationship_type': 'AMPLIFIES',
+                'justification': 'Initial event amplification'
+            })
+    
+    # Connect sequential events
+    for i in range(len(events) - 1):
+        if i < len(events) - 1:
+            rel_type = 'AMPLIFIES' if events[i]['event_type'] == events[i+1]['event_type'] else 'CONSEQUENCE_OF'
+            relationships.append({
+                'source_article_id': f'art_{i:04d}',
+                'target_article_id': f'art_{i+1:04d}',
+                'relationship_type': rel_type,
+                'justification': 'Sequential event connection'
+            })
+    
+    # Add some cross-connections for similar event types
+    event_type_groups = {}
+    for i, event in enumerate(events):
+        et = event['event_type']
+        if et not in event_type_groups:
+            event_type_groups[et] = []
+        event_type_groups[et].append(i)
+    
+    for et, indices in event_type_groups.items():
+        if len(indices) > 1:
+            for i in range(len(indices) - 1):
+                if indices[i+1] - indices[i] > 1:  # Not sequential
+                    relationships.append({
+                        'source_article_id': f'art_{indices[i]:04d}',
+                        'target_article_id': f'art_{indices[i+1]:04d}',
+                        'relationship_type': 'AMPLIFIES',
+                        'justification': f'Similar {et} events'
+                    })
+    
+    return {'relationships': relationships}
 
 def save_relationships(relationships_data):
     with open("graphs/relationships.json", "w", encoding="utf-8") as f:

@@ -24,7 +24,7 @@ venv.bak/
 data/*.json
 outputs/*.json
 outputs/*.pdf
-
+*outputs/*
 # Logs
 *.log
 
