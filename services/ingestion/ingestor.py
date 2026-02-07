@@ -326,9 +326,13 @@ class NewsIngestor:
         """
         logger.info(f"Starting ingestion for query: '{topic_query}'")
         
+        # Fetch 25% more articles to account for deduplication and filtering
+        fetch_count = int(max_articles * 1.25)
+        logger.info(f"Fetching {fetch_count} articles to ensure {max_articles} after deduplication")
+        
         # Step 1: Fetch raw articles
         raw_articles = self.fetch_articles(
-            topic_query, max_articles, start_date, end_date
+            topic_query, fetch_count, start_date, end_date
         )
         
         if not raw_articles:
@@ -355,17 +359,21 @@ class NewsIngestor:
         # Step 3: Deduplicate
         unique_articles = self.deduplicate_articles(processed_articles)
         
-        # Step 4: Save to JSON
-        self.save_to_json(unique_articles, topic_query, output_path)
+        # Step 4: Limit to requested count
+        final_articles = unique_articles[:max_articles]
+        logger.info(f"Returning {len(final_articles)} articles (requested: {max_articles}, after dedup: {len(unique_articles)})")
         
-        logger.info(f"Ingestion complete: {len(unique_articles)} unique articles")
+        # Step 5: Save to JSON
+        self.save_to_json(final_articles, topic_query, output_path)
+        
+        logger.info(f"Ingestion complete: {len(final_articles)} unique articles")
         
         # Return output object
         return ArticlesOutput(
             case_id=generate_case_id(topic_query, get_current_iso_time()),
             query=topic_query,
             generated_at=get_current_iso_time(),
-            articles=unique_articles
+            articles=final_articles
         )
 
 
