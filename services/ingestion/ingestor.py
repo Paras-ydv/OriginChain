@@ -42,8 +42,8 @@ class NewsIngestor:
         max_articles: int = DEFAULT_MAX_ARTICLES,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        use_gdelt: bool = False,  # Disabled by default (rate limited)
-        use_rss: bool = False,    # Disabled by default (not finding articles)
+        use_gdelt: bool = True,  # Disabled by default (rate limited)
+        use_rss: bool = True,    # Disabled by default (not finding articles)
         use_web_search: bool = True  # Only web search enabled
     ) -> List[Dict[str, Any]]:
         """
