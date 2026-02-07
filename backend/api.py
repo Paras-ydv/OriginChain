@@ -100,13 +100,13 @@ async def analyze_news(request: AnalysisRequest):
         impact_path = impact_engine.analyze_impact(timeline_path, request.target_entity)
         
         # Generate relationships
-        with open(timeline_path, 'r') as f:
+        with open(timeline_path, 'r', encoding='utf-8') as f:
             timeline_data = json.load(f)
         relationships = generate_relationships(timeline_data)
         
         # Save relationships to file
         rel_path = os.path.join(outputs_dir, "relationships.json")
-        with open(rel_path, 'w') as f:
+        with open(rel_path, 'w', encoding='utf-8') as f:
             json.dump(relationships, f, indent=2)
         
         # Generate case ID for sharing
@@ -116,11 +116,11 @@ async def analyze_news(request: AnalysisRequest):
         print(f"Generated {len(relationships.get('relationships', []))} relationships")
         print(f"Case ID: {case_id}")
         
-        with open(os.path.join(outputs_dir, "articles.json"), 'r') as f:
+        with open(os.path.join(outputs_dir, "articles.json"), 'r', encoding='utf-8') as f:
             articles = json.load(f)
-        with open(timeline_path, 'r') as f:
+        with open(timeline_path, 'r', encoding='utf-8') as f:
             timeline = json.load(f)
-        with open(impact_path, 'r') as f:
+        with open(impact_path, 'r', encoding='utf-8') as f:
             impact = json.load(f)
         
         # Save complete analysis for sharing
@@ -136,7 +136,7 @@ async def analyze_news(request: AnalysisRequest):
         }
         
         case_path = os.path.join(outputs_dir, f"case_{case_id}.json")
-        with open(case_path, 'w') as f:
+        with open(case_path, 'w', encoding='utf-8') as f:
             json.dump(analysis_data, f, indent=2)
         
         return {
@@ -164,7 +164,7 @@ async def get_case(case_id: str):
         if not os.path.exists(case_path):
             raise HTTPException(status_code=404, detail="Case not found")
         
-        with open(case_path, 'r') as f:
+        with open(case_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -178,12 +178,12 @@ async def export_pdf(case_id: str):
         if not os.path.exists(case_path):
             raise HTTPException(status_code=404, detail="Case not found")
         
-        with open(case_path, 'r') as f:
+        with open(case_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
         
         # Generate simple text report (PDF generation requires reportlab)
         report_path = os.path.join(root_dir, "outputs", f"report_{case_id}.txt")
-        with open(report_path, 'w') as f:
+        with open(report_path, 'w', encoding='utf-8') as f:
             f.write(f"OriginChain Analysis Report\n")
             f.write(f"="*50 + "\n\n")
             f.write(f"Query: {data['query']}\n")
