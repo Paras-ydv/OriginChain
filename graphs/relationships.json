@@ -1,3 +1,88 @@
 {
-  "relationships": []
+  "relationships": [
+    {
+      "source_article_id": "art_0000",
+      "target_article_id": "art_0001",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0001 reports a significant surge in Tesla's stock price and Elon Musk's net worth, amplifying the earlier claim of 'Tesla stock strong' from article 0000."
+    },
+    {
+      "source_article_id": "art_0001",
+      "target_article_id": "art_0002",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0002 further reinforces the positive trend reported in article 0001 by stating that Tesla's stock price reached an all-time high."
+    },
+    {
+      "source_article_id": "art_0002",
+      "target_article_id": "art_0003",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0003 confirms Tesla's stock hitting a new high for the year, amplifying the record-breaking performance mentioned in article 0002."
+    },
+    {
+      "source_article_id": "art_0000",
+      "target_article_id": "art_0004",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0004 explicitly links the success of Elon Musk's robotics to Tesla closing at an all-time high, amplifying both the robotics theme and the strong stock performance noted in article 0000."
+    },
+    {
+      "source_article_id": "art_0004",
+      "target_article_id": "art_0005",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0005 further amplifies the positive news by detailing Tesla's new stock high and attributing it to an autonomous driving breakthrough, building on the technology and stock surge narrative from article 0004."
+    },
+    {
+      "source_article_id": "art_0005",
+      "target_article_id": "art_0006",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0006 continues to report Tesla's stock renewing its all-time high, specifically linking it to increased 'robotics expectation,' thereby amplifying the themes from article 0005."
+    },
+    {
+      "source_article_id": "art_0006",
+      "target_article_id": "art_0007",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0007 confirms Tesla's stock recovery and hitting its highest point, reinforcing the peak performance reported in article 0006."
+    },
+    {
+      "source_article_id": "art_0006",
+      "target_article_id": "art_0012",
+      "relationship_type": "CONSEQUENCE_OF",
+      "justification": "Article 0012 reports Tesla cutting car models to shift towards robots and AI, which can be seen as a strategic consequence of the growing 'robotics expectation' highlighted in article 0006 and earlier articles."
+    },
+    {
+      "source_article_id": "art_0007",
+      "target_article_id": "art_0009",
+      "relationship_type": "COUNTERS",
+      "justification": "Article 0009 directly counters the consistently positive reporting of Tesla's stock performance (e.g., article 0007) by a veteran fund manager calling it the 'biggest stock market bubble of all time'."
+    },
+    {
+      "source_article_id": "art_0009",
+      "target_article_id": "art_0014",
+      "relationship_type": "CONSEQUENCE_OF",
+      "justification": "Article 0014 reports Tesla stock plunging significantly, which can be interpreted as a market reaction or a realization of the 'bubble' sentiment expressed in article 0009."
+    },
+    {
+      "source_article_id": "art_0014",
+      "target_article_id": "art_0015",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0015 further amplifies the negative trend by reporting an even larger drop in Tesla stock and providing a specific reason: a plunge in UK sales."
+    },
+    {
+      "source_article_id": "art_0015",
+      "target_article_id": "art_0016",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0016 continues to report Tesla stock tumbling, further amplifying the negative performance observed in article 0015, despite Cathie Wood's purchase."
+    },
+    {
+      "source_article_id": "art_0016",
+      "target_article_id": "art_0018",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0018 amplifies the ongoing slide in Tesla stock, providing additional contributing factors like a China AI training report and Europe sales warnings."
+    },
+    {
+      "source_article_id": "root_origin",
+      "target_article_id": "art_0017",
+      "relationship_type": "AMPLIFIES",
+      "justification": "Article 0017 reiterates the initial claim from the root origin about Bitcoin falling to its lowest level since Trump took office."
+    }
+  ]
 }
