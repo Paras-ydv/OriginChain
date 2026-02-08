@@ -7,6 +7,30 @@ import os
 from datetime import datetime
 from typing import List, Dict
 
+# Import translation utilities
+try:
+    import sys
+    ingestion_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ingestion')
+    sys.path.insert(0, ingestion_path)
+    from utils import translate_to_english, detect_language
+    from config import TRANSLATION_ENABLED
+    TRANSLATION_AVAILABLE = True
+except ImportError:
+    TRANSLATION_AVAILABLE = False
+    TRANSLATION_ENABLED = False
+
+def translate_event_text(text: str) -> str:
+    """Translate text to English if not already in English."""
+    if not text or not TRANSLATION_AVAILABLE or not TRANSLATION_ENABLED:
+        return text
+    try:
+        lang = detect_language(text)
+        if lang and lang != 'en':
+            return translate_to_english(text, lang)
+    except:
+        pass
+    return text
+
 try:
     from google import genai
     env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env')
@@ -76,13 +100,14 @@ Return JSON:
                     if event_analysis.get('relevant') and j < len(batch):
                         original_event = batch[j]
                         all_relevant_events.append({
-                            'title': original_event['title'],
+                            'title': translate_event_text(original_event['title']),
                             'source': original_event['source'],
                             'timestamp': original_event['timestamp'],
                             'sentiment': event_analysis.get('sentiment', 'neutral'),
                             'event_type': original_event['event_type'],
                             'url': original_event.get('url', ''),
-                            'summary': original_event.get('summary', ''),
+                            'summary': translate_event_text(original_event.get('summary', '')),
+                            'raw_text': translate_event_text(original_event.get('clean_text', original_event.get('raw_text', ''))),
                             'impact_description': event_analysis.get('impact', '')
                         })
             except Exception as e:
@@ -90,13 +115,14 @@ Return JSON:
                 for event in batch:
                     if target_entity.lower() in event['title'].lower():
                         all_relevant_events.append({
-                            'title': event['title'],
+                            'title': translate_event_text(event['title']),
                             'source': event['source'],
                             'timestamp': event['timestamp'],
                             'sentiment': self._analyze_sentiment(event['title'].lower()),
                             'event_type': event['event_type'],
                             'url': event.get('url', ''),
-                            'summary': event.get('summary', '')
+                            'summary': translate_event_text(event.get('summary', '')),
+                            'raw_text': translate_event_text(event.get('clean_text', event.get('raw_text', '')))
                         })
         
         positive_count = sum(1 for e in all_relevant_events if e['sentiment'] == 'positive')
@@ -141,13 +167,14 @@ Return JSON:
             if target_entity.lower() in title.lower():
                 sentiment = self._analyze_sentiment(title.lower())
                 relevant_events.append({
-                    'title': title,
+                    'title': translate_event_text(title),
                     'source': event.get('source', 'Unknown'),
                     'timestamp': event.get('timestamp'),
                     'sentiment': sentiment,
                     'event_type': event.get('event_type', 'unknown'),
                     'url': event.get('url', ''),
-                    'summary': event.get('summary', '')
+                    'summary': translate_event_text(event.get('summary', '')),
+                    'raw_text': translate_event_text(event.get('clean_text', event.get('raw_text', '')))
                 })
                 if sentiment == 'positive':
                     positive_count += 1

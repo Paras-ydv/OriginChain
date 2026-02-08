@@ -2,6 +2,12 @@
 Configuration constants for News Ingestion Service.
 """
 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 # Web Search Configuration
 WEB_SEARCH_ENGINES = {
     "duckduckgo": "https://duckduckgo.com/html/",
@@ -9,6 +15,20 @@ WEB_SEARCH_ENGINES = {
 }
 WEB_SEARCH_MAX_RESULTS = 20  # Top 20 relevant sites
 WEB_SEARCH_TIMEOUT = 10  # seconds
+
+# NewsAPI Configuration (https://newsapi.org)
+NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
+NEWSAPI_BASE_URL = "https://newsapi.org/v2"
+NEWSAPI_MAX_ARTICLES = 20  # Free tier limit per request
+
+# GNews API Configuration (https://gnews.io)
+GNEWS_API_KEY = os.getenv("GNEWS_API_KEY", "")
+GNEWS_BASE_URL = "https://gnews.io/api/v4"
+GNEWS_MAX_ARTICLES = 10  # Free tier limit per request
+
+# Translation Configuration
+TRANSLATION_ENABLED = True
+TARGET_LANGUAGE = "en"
 
 # RSS Feed URLs for major publishers
 RSS_FEEDS = {

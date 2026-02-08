@@ -10,14 +10,15 @@ import requests
 from bs4 import BeautifulSoup
 
 from schema import Article, ArticlesOutput
-from sources import GDELTClient, RSSFeedClient, WebSearchClient
+from sources import GDELTClient, RSSFeedClient, WebSearchClient, NewsAPIClient, GNewsClient
 from deduplicator import DuplicateResolver
 from mock_source import MockNewsSource
 from utils import (
     clean_html, normalize_url, parse_date, get_current_iso_time,
-    generate_article_id, generate_case_id, is_valid_article_text
+    generate_article_id, generate_case_id, is_valid_article_text,
+    translate_article
 )
-from config import REQUEST_TIMEOUT, USER_AGENT, DEFAULT_MAX_ARTICLES
+from config import REQUEST_TIMEOUT, USER_AGENT, DEFAULT_MAX_ARTICLES, TRANSLATION_ENABLED
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,6 +32,8 @@ class NewsIngestor:
         self.gdelt_client = GDELTClient()
         self.rss_client = RSSFeedClient()
         self.web_search_client = WebSearchClient()
+        self.newsapi_client = NewsAPIClient()
+        self.gnews_client = GNewsClient()
         self.mock_client = MockNewsSource()
         self.deduplicator = DuplicateResolver()
         self.session = requests.Session()
@@ -42,9 +45,11 @@ class NewsIngestor:
         max_articles: int = DEFAULT_MAX_ARTICLES,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        use_gdelt: bool = True,  # Disabled by default (rate limited)
-        use_rss: bool = True,    # Disabled by default (not finding articles)
-        use_web_search: bool = True  # Only web search enabled
+        use_gdelt: bool = True,
+        use_rss: bool = True,
+        use_web_search: bool = True,
+        use_newsapi: bool = True,
+        use_gnews: bool = True
     ) -> List[Dict[str, Any]]:
         """
         Fetch articles from all sources.
@@ -57,6 +62,8 @@ class NewsIngestor:
             use_gdelt: Whether to use GDELT API
             use_rss: Whether to use RSS feeds
             use_web_search: Whether to use web search
+            use_newsapi: Whether to use NewsAPI
+            use_gnews: Whether to use GNews API
             
         Returns:
             List of article dictionaries
@@ -69,10 +76,32 @@ class NewsIngestor:
             return self.mock_client.search(topic_query, max_articles, start_date, end_date)
         
         # Calculate how many to fetch from each source
-        active_sources = int(use_gdelt) + int(use_rss) + int(use_web_search)
+        active_sources = int(use_gdelt) + int(use_rss) + int(use_web_search) + int(use_newsapi) + int(use_gnews)
         per_source = max_articles // active_sources if active_sources > 0 else 0
         
-        # Fetch from RSS first (most reliable)
+        # Fetch from NewsAPI (high quality, limited free tier)
+        if use_newsapi:
+            try:
+                logger.info(f"Fetching from NewsAPI: query='{topic_query}'")
+                newsapi_articles = self.newsapi_client.search(
+                    topic_query, per_source, start_date, end_date
+                )
+                all_articles.extend(newsapi_articles)
+            except Exception as e:
+                logger.error(f"NewsAPI fetch failed: {str(e)}")
+        
+        # Fetch from GNews API
+        if use_gnews:
+            try:
+                logger.info(f"Fetching from GNews: query='{topic_query}'")
+                gnews_articles = self.gnews_client.search(
+                    topic_query, per_source, start_date, end_date
+                )
+                all_articles.extend(gnews_articles)
+            except Exception as e:
+                logger.error(f"GNews fetch failed: {str(e)}")
+        
+        # Fetch from RSS feeds
         if use_rss:
             try:
                 logger.info(f"Fetching from RSS: query='{topic_query}'")
@@ -99,7 +128,7 @@ class NewsIngestor:
             try:
                 logger.info(f"Fetching from web search: query='{topic_query}'")
                 web_articles = self.web_search_client.search(
-                    topic_query, per_source  # Use per_source instead of hardcoded 20
+                    topic_query, per_source
                 )
                 all_articles.extend(web_articles)
             except Exception as e:
@@ -187,7 +216,7 @@ class NewsIngestor:
     
     def process_articles(self, raw_articles: List[Dict]) -> List[Article]:
         """
-        Process raw articles: fetch content, clean, extract metadata.
+        Process raw articles: fetch content, clean, extract metadata, translate if needed.
         
         Args:
             raw_articles: List of raw article dictionaries
@@ -225,19 +254,30 @@ class NewsIngestor:
                 author = raw_article.get('author') or metadata.get('author')
                 published_at = raw_article.get('published_at') or metadata.get('published_at')
                 
+                # Prepare article dict for potential translation
+                article_dict = {
+                    'title': raw_article.get('title', 'Untitled'),
+                    'clean_text': clean_text,
+                    'language': raw_article.get('language', 'en')
+                }
+                
+                # Translate non-English articles if translation is enabled
+                if TRANSLATION_ENABLED:
+                    article_dict = translate_article(article_dict)
+                
                 # Generate article ID
-                article_id = generate_article_id(url, raw_article.get('title', ''))
+                article_id = generate_article_id(url, article_dict.get('title', ''))
                 
                 # Create Article object
                 article = Article(
                     article_id=article_id,
-                    title=raw_article.get('title', 'Untitled'),
+                    title=article_dict.get('title', 'Untitled'),
                     source_name=raw_article.get('source_name', 'Unknown'),
                     url=normalize_url(url),
                     published_at=published_at or get_current_iso_time(),
                     author=author,
-                    language=raw_article.get('language', 'en'),
-                    clean_text=clean_text,
+                    language=article_dict.get('language', 'en'),
+                    clean_text=article_dict.get('clean_text', ''),
                     raw_text=raw_text[:10000] if raw_text else None  # Truncate raw text
                 )
                 

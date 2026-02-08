@@ -31,6 +31,10 @@ html2text>=2020.1.16
 # Development
 python-dotenv>=1.0.0
 
+# Translation
+deep-translator>=1.11.0
+langdetect>=1.0.9
+
 #frontend dependencies
 fastapi
 uvicorn

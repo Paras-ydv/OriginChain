@@ -15,7 +15,9 @@ from config import (
     RSS_FEEDS, GDELT_API_URL, GDELT_MODE, GDELT_FORMAT,
     GDELT_MAX_RECORDS, REQUEST_TIMEOUT, MAX_RETRIES,
     RETRY_DELAY, USER_AGENT, WEB_SEARCH_ENGINES,
-    WEB_SEARCH_MAX_RESULTS, WEB_SEARCH_TIMEOUT
+    WEB_SEARCH_MAX_RESULTS, WEB_SEARCH_TIMEOUT,
+    NEWSAPI_KEY, NEWSAPI_BASE_URL, NEWSAPI_MAX_ARTICLES,
+    GNEWS_API_KEY, GNEWS_BASE_URL, GNEWS_MAX_ARTICLES
 )
 from utils import parse_date, extract_domain
 
@@ -558,3 +560,184 @@ class WebSearchClient:
         
         url_lower = url.lower()
         return any(indicator in url_lower for indicator in news_indicators)
+
+
+class NewsAPIClient:
+    """Client for NewsAPI.org."""
+    
+    def __init__(self):
+        self.api_key = NEWSAPI_KEY
+        self.base_url = NEWSAPI_BASE_URL
+        self.session = requests.Session()
+        self.session.headers.update({'User-Agent': USER_AGENT})
+    
+    def search(
+        self,
+        query: str,
+        max_records: int = NEWSAPI_MAX_ARTICLES,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search NewsAPI for articles matching query.
+        
+        Args:
+            query: Search query
+            max_records: Maximum number of records to return
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            
+        Returns:
+            List of article dictionaries
+        """
+        if not self.api_key or self.api_key == "your_newsapi_key_here":
+            logger.warning("NewsAPI key not configured, skipping NewsAPI source")
+            return []
+        
+        articles = []
+        
+        try:
+            # Build request URL
+            url = f"{self.base_url}/everything"
+            params = {
+                'q': query,
+                'apiKey': self.api_key,
+                'pageSize': min(max_records, NEWSAPI_MAX_ARTICLES),
+                'language': 'en',
+                'sortBy': 'publishedAt'
+            }
+            
+            # Add date range if provided
+            if start_date:
+                params['from'] = start_date
+            if end_date:
+                params['to'] = end_date
+            
+            response = self.session.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('status') == 'ok' and 'articles' in data:
+                for item in data['articles']:
+                    article = self._parse_article(item)
+                    if article:
+                        articles.append(article)
+            
+            logger.info(f"NewsAPI: Fetched {len(articles)} articles for query '{query}'")
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"NewsAPI request failed: {str(e)}")
+        except Exception as e:
+            logger.error(f"NewsAPI error: {str(e)}")
+        
+        return articles
+    
+    def _parse_article(self, item: Dict) -> Optional[Dict[str, Any]]:
+        """Parse NewsAPI article into standard format."""
+        try:
+            url = item.get('url', '')
+            if not url:
+                return None
+            
+            return {
+                'url': url,
+                'title': item.get('title', '').strip() if item.get('title') else '',
+                'source_name': item.get('source', {}).get('name', extract_domain(url)),
+                'published_at': parse_date(item.get('publishedAt', '')),
+                'author': item.get('author'),
+                'language': 'en',
+                'raw_text': item.get('content') or item.get('description')
+            }
+        except Exception as e:
+            logger.warning(f"Failed to parse NewsAPI article: {str(e)}")
+            return None
+
+
+class GNewsClient:
+    """Client for GNews.io API."""
+    
+    def __init__(self):
+        self.api_key = GNEWS_API_KEY
+        self.base_url = GNEWS_BASE_URL
+        self.session = requests.Session()
+        self.session.headers.update({'User-Agent': USER_AGENT})
+    
+    def search(
+        self,
+        query: str,
+        max_records: int = GNEWS_MAX_ARTICLES,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Search GNews for articles matching query.
+        
+        Args:
+            query: Search query
+            max_records: Maximum number of records to return
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            
+        Returns:
+            List of article dictionaries
+        """
+        if not self.api_key or self.api_key == "your_gnews_api_key_here":
+            logger.warning("GNews API key not configured, skipping GNews source")
+            return []
+        
+        articles = []
+        
+        try:
+            # Build request URL
+            url = f"{self.base_url}/search"
+            params = {
+                'q': query,
+                'token': self.api_key,
+                'max': min(max_records, GNEWS_MAX_ARTICLES),
+                'lang': 'en'
+            }
+            
+            # Add date range if provided (GNews uses ISO format)
+            if start_date:
+                params['from'] = f"{start_date}T00:00:00Z"
+            if end_date:
+                params['to'] = f"{end_date}T23:59:59Z"
+            
+            response = self.session.get(url, params=params, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+            
+            if 'articles' in data:
+                for item in data['articles']:
+                    article = self._parse_article(item)
+                    if article:
+                        articles.append(article)
+            
+            logger.info(f"GNews: Fetched {len(articles)} articles for query '{query}'")
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"GNews request failed: {str(e)}")
+        except Exception as e:
+            logger.error(f"GNews error: {str(e)}")
+        
+        return articles
+    
+    def _parse_article(self, item: Dict) -> Optional[Dict[str, Any]]:
+        """Parse GNews article into standard format."""
+        try:
+            url = item.get('url', '')
+            if not url:
+                return None
+            
+            return {
+                'url': url,
+                'title': item.get('title', '').strip() if item.get('title') else '',
+                'source_name': item.get('source', {}).get('name', extract_domain(url)),
+                'published_at': parse_date(item.get('publishedAt', '')),
+                'author': None,  # GNews doesn't provide author
+                'language': 'en',
+                'raw_text': item.get('content') or item.get('description')
+            }
+        except Exception as e:
+            logger.warning(f"Failed to parse GNews article: {str(e)}")
+            return None

@@ -2,6 +2,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, TrendingDown, Minus, Target, AlertTriangle, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
+// Helper function to clean raw text: remove HTML, links, and truncate to 150 chars
+const cleanAndTruncateText = (text, maxLength = 150) => {
+  if (!text) return '';
+  // Remove HTML tags
+  let cleaned = text.replace(/<[^>]*>/g, '');
+  // Remove URLs (http/https links and markdown links)
+  cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, '');
+  cleaned = cleaned.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  // Remove markdown formatting
+  cleaned = cleaned.replace(/[*_#`]/g, '');
+  // Remove extra whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  // Truncate to maxLength
+  if (cleaned.length > maxLength) {
+    cleaned = cleaned.substring(0, maxLength).trim() + '...';
+  }
+  return cleaned;
+};
+
 export default function ImpactAnalysis({ impact }) {
   const [hoveredEvent, setHoveredEvent] = useState(null);
 
@@ -96,6 +115,10 @@ export default function ImpactAnalysis({ impact }) {
                 };
                 const sentColor = sentimentColors[event.sentiment] || sentimentColors.neutral;
 
+                // Get cleaned text from raw_text, summary, or description
+                const rawText = event.raw_text || event.summary || event.description || '';
+                const cleanedText = cleanAndTruncateText(rawText, 150);
+
                 return (
                   <motion.div
                     key={idx}
@@ -105,7 +128,7 @@ export default function ImpactAnalysis({ impact }) {
                     onHoverStart={() => setHoveredEvent(idx)}
                     onHoverEnd={() => setHoveredEvent(null)}
                     onClick={() => event.url && window.open(event.url, '_blank')}
-                    className="relative bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition group"
+                    className="bg-white/5 rounded-lg p-3 cursor-pointer hover:bg-white/10 transition group"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -117,8 +140,11 @@ export default function ImpactAnalysis({ impact }) {
                             {new Date(event.timestamp).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-300 mb-1 line-clamp-2">{event.title}</p>
-                        <p className="text-xs text-gray-500 truncate">{event.source}</p>
+                        <p className="text-sm text-gray-300 font-medium">{event.title}</p>
+                        {cleanedText && (
+                          <p className="text-xs text-gray-400 leading-relaxed mt-2">{cleanedText}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">{event.source}</p>
                       </div>
                       {event.url && (
                         <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition flex-shrink-0" />
@@ -126,19 +152,16 @@ export default function ImpactAnalysis({ impact }) {
                     </div>
 
                     <AnimatePresence>
-                      {hoveredEvent === idx && event.summary && (
+                      {hoveredEvent === idx && cleanedText && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           className="mt-3 pt-3 border-t border-white/10 overflow-hidden"
                         >
-                          <div className="bg-black/30 rounded p-3">
-                            <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">{event.summary}</p>
-                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
-                              <span>Click to read full article</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <span>Click to read full article</span>
+                            <ExternalLink className="w-3 h-3" />
                           </div>
                         </motion.div>
                       )}

@@ -4,14 +4,28 @@ Utility functions for News Ingestion Service.
 
 import re
 import hashlib
+import logging
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from urllib.parse import urlparse, urlunparse
 from bs4 import BeautifulSoup
 import html2text
 from dateutil import parser as date_parser
 
-from config import ISO_DATE_FORMAT, MIN_ARTICLE_LENGTH, MAX_ARTICLE_LENGTH
+from config import ISO_DATE_FORMAT, MIN_ARTICLE_LENGTH, MAX_ARTICLE_LENGTH, TRANSLATION_ENABLED, TARGET_LANGUAGE
+
+# Translation import with fallback (using deep-translator for Python 3.13 compatibility)
+try:
+    from deep_translator import GoogleTranslator
+    from langdetect import detect as langdetect_detect
+    TRANSLATION_AVAILABLE = True
+except ImportError:
+    GoogleTranslator = None
+    langdetect_detect = None
+    TRANSLATION_AVAILABLE = False
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def clean_html(html_content: str) -> str:
@@ -193,3 +207,115 @@ def extract_domain(url: str) -> str:
         return domain
     except:
         return "unknown"
+
+
+def detect_language(text: str) -> Optional[str]:
+    """
+    Detect the language of text.
+    
+    Args:
+        text: Text to detect language for
+        
+    Returns:
+        Language code (e.g., 'en', 'es', 'fr') or None if detection fails
+    """
+    if not text or not TRANSLATION_AVAILABLE or langdetect_detect is None:
+        return None
+    
+    try:
+        # Use first 500 chars for detection (faster)
+        sample = text[:500] if len(text) > 500 else text
+        # Remove any HTML/special chars that might confuse detection
+        sample = re.sub(r'<[^>]+>', '', sample)
+        sample = sample.strip()
+        
+        if len(sample) < 10:  # Need minimum text for reliable detection
+            return None
+            
+        detected = langdetect_detect(sample)
+        return detected
+    except Exception as e:
+        logger.debug(f"Language detection failed: {str(e)}")
+        return None
+
+
+def translate_to_english(text: str, source_lang: Optional[str] = None) -> str:
+    """
+    Translate text to English.
+    
+    Args:
+        text: Text to translate
+        source_lang: Source language code (optional, auto-detected if not provided)
+        
+    Returns:
+        Translated text in English, or original text if translation fails
+    """
+    if not text or not TRANSLATION_AVAILABLE or GoogleTranslator is None:
+        return text
+    
+    try:
+        # Skip if already English
+        if source_lang == 'en' or source_lang == TARGET_LANGUAGE:
+            return text
+        
+        # Translate using deep-translator
+        translator = GoogleTranslator(source=source_lang or 'auto', target=TARGET_LANGUAGE)
+        result = translator.translate(text)
+        return result if result else text
+    except Exception as e:
+        logger.warning(f"Translation failed: {str(e)}")
+        return text
+
+
+def translate_article(article: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Translate article title and clean_text to English if not already in English.
+    
+    Args:
+        article: Article dictionary with 'title', 'clean_text', and 'language' fields
+        
+    Returns:
+        Article dictionary with translated content
+    """
+    if not TRANSLATION_ENABLED or not TRANSLATION_AVAILABLE:
+        return article
+    
+    try:
+        # Detect language from title or clean_text
+        text_sample = article.get('title', '') or article.get('clean_text', '')[:200]
+        detected_lang = detect_language(text_sample)
+        
+        # Skip if already English or detection failed
+        if detected_lang is None or detected_lang == 'en':
+            if article.get('language') != 'en':
+                article['language'] = detected_lang or 'en'
+            return article
+        
+        logger.info(f"Translating article from '{detected_lang}' to English")
+        
+        # Store original language
+        article['original_language'] = detected_lang
+        
+        # Translate title
+        if article.get('title'):
+            article['title'] = translate_to_english(article['title'], detected_lang)
+        
+        # Translate clean_text
+        if article.get('clean_text'):
+            # Translate in chunks if text is very long (Google Translate limit)
+            clean_text = article['clean_text']
+            if len(clean_text) > 5000:
+                # Translate in 5000 char chunks
+                chunks = [clean_text[i:i+5000] for i in range(0, len(clean_text), 5000)]
+                translated_chunks = [translate_to_english(chunk, detected_lang) for chunk in chunks]
+                article['clean_text'] = ''.join(translated_chunks)
+            else:
+                article['clean_text'] = translate_to_english(clean_text, detected_lang)
+        
+        # Update language to English
+        article['language'] = 'en'
+        
+    except Exception as e:
+        logger.warning(f"Article translation failed: {str(e)}")
+    
+    return article
